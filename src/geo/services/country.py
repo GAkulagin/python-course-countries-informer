@@ -13,6 +13,14 @@ class CountryService:
     Сервис для работы с данными о странах.
     """
 
+    def get_all_countries(self) -> QuerySet[Country]:
+        """
+        Получение списка всех стран в базе данных.
+
+        :return:
+        """
+        return Country.objects.all()
+
     def get_countries(self, name: str) -> QuerySet[Country]:
         """
         Получение списка стран по названию.

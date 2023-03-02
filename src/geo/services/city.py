@@ -18,6 +18,14 @@ class CityService:
     def __init__(self) -> None:
         self.geo_client = GeoClient()
 
+    def get_all_cities(self) -> QuerySet[City]:
+        """
+        Получение списка всех городов в базе данных.
+
+        :return:
+        """
+        return City.objects.all()
+
     def get_cities(self, name: str) -> QuerySet[City]:
         """
         Получение списка городов по названию.

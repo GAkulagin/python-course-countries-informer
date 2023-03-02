@@ -225,3 +225,9 @@ API_KEY_OPENWEATHER = env("API_KEY_OPENWEATHER")
 API_KEY_NEWSAPI = env("API_KEY_NEWSAPI")
 # таймаут запросов на внешние ресурсы
 REQUESTS_TIMEOUT = env.int("REQUESTS_TIMEOUT")
+
+# настройка пагинации запросов
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 10
+}
