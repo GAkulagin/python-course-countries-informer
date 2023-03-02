@@ -1,8 +1,11 @@
 from typing import Optional
 
+from django.db.models import Q, QuerySet
+
 from news.clients.news import NewsClient
 from news.clients.shemas import NewsItemDTO
 from news.models import News
+from geo.models import Country
 
 
 class NewsService:
@@ -10,15 +13,26 @@ class NewsService:
     Сервис для работы с данными о новостях.
     """
 
-    def get_news(self, country_code: str) -> Optional[list[NewsItemDTO]]:
+    def get_news(self, country_code: str) -> Optional[QuerySet[NewsItemDTO]]:
         """
         Получение актуальных новостей по коду страны.
 
         :param str country_code: ISO Alpha2 код страны
         :return:
         """
+        country = Country.objects.get(Q(alpha2code__iregex=country_code))
 
-        return NewsClient().get_news(country_code)
+        if country:
+            news = News.objects.filter(Q(country__id=country.pk))
+
+            if not news:
+                if data := NewsClient().get_news(country_code):
+                    self.save_news(country.pk, data)
+                    news = News.objects.filter(Q(country__id=country.pk))
+
+            return news
+
+        return None
 
     def save_news(self, country_pk: int, news: list[NewsItemDTO]) -> None:
         """
@@ -50,6 +64,6 @@ class NewsService:
             author=news_item.author if news_item.author else "",
             title=news_item.title,
             description=news_item.description if news_item.description else "",
-            url=news_item.url if news_item.url else "",
+            url="",
             published_at=news_item.published_at,
         )

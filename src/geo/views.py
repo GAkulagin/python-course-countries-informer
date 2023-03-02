@@ -1,6 +1,5 @@
 """Представления Django"""
 import re
-from typing import Any
 
 from django.core.cache import caches
 from django.http import JsonResponse
@@ -9,9 +8,10 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.request import Request
 
 from app.settings import CACHE_WEATHER
-from geo.serializers import CountrySerializer, CitySerializer
+from geo.serializers import CountrySerializer, CitySerializer, WeatherSerializer, CurrencySerializer
 from geo.services.city import CityService
 from geo.services.country import CountryService
+from geo.services.currency import CurrencyService
 from geo.services.shemas import CountryCityDTO
 from geo.services.weather import WeatherService
 
@@ -136,11 +136,31 @@ def get_weather(request: Request, alpha2code: str, city: str) -> JsonResponse:
             caches[CACHE_WEATHER].set(cache_key, data)
 
     if data:
-        return JsonResponse(data)
+        serializer = WeatherSerializer(data, many=True)
 
-    raise NotFound
+        return JsonResponse(serializer.data, safe=False)
+
+    return JsonResponse([], safe=False)
 
 
 @api_view(["GET"])
-def get_currency(*args: Any, **kwargs: Any) -> None:
-    pass
+def get_currency(request: Request, code: str) -> JsonResponse:
+    """
+    Получение информации о курсах валют для указанной валюты.
+
+    :param Request request: Объект запроса
+    :param str code: трехзначный код валюты
+
+    :return:
+    """
+    data = caches[CACHE_WEATHER].get(code)
+    if not data:
+        if data := CurrencyService().get_currency_rates(code=code):
+            caches[CACHE_WEATHER].set(code, data)
+
+    if data:
+        serializer = CurrencySerializer(data, many=True)
+
+        return JsonResponse(serializer.data, safe=False)
+
+    return JsonResponse([], safe=False)
