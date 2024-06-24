@@ -154,6 +154,7 @@ class CurrencyRatesDTO(BaseModel):
 
         CurrencyRatesDTO(
             base="RUB",
+            name="Russian Ruble",
             date="2022-09-14",
             rates={
                 "EUR": 0.016503,
@@ -178,6 +179,8 @@ class WeatherInfoDTO(BaseModel):
             humidity=54,
             wind_speed=4.63,
             description="scattered clouds",
+            country="RU",
+            city="Moscow",
         )
     """
 
@@ -186,6 +189,8 @@ class WeatherInfoDTO(BaseModel):
     humidity: int
     wind_speed: float
     description: str
+    country: str
+    city: str
 
 
 class LocationInfoDTO(BaseModel):

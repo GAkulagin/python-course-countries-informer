@@ -30,7 +30,7 @@ class News(TimeStampMixin):
         verbose_name="Описание",
     )
     url = models.CharField(
-        max_length=300,
+        max_length=500,
         default="",
         blank=True,
         verbose_name="Ссылка на источник",

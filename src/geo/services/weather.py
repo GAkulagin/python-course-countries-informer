@@ -1,8 +1,8 @@
-from typing import Optional
+from django.db.models import Q, QuerySet
 
-from geo.clients.shemas import CountryDTO
 from geo.clients.weather import WeatherClient
-from geo.models import Country
+from geo.models import Weather
+from geo.clients.shemas import WeatherInfoDTO
 
 
 class WeatherService:
@@ -10,42 +10,38 @@ class WeatherService:
     Сервис для работы с данными о погоде.
     """
 
-    def get_weather(self, alpha2code: str, city: str) -> Optional[dict]:
+    def get_weather(self, alpha2code: str, city: str) -> QuerySet[Weather]:
         """
-        Получение списка стран по названию.
+        Получение погоды в заданном городе.
 
         :param alpha2code: ISO Alpha2 код страны
         :param city: Город
         :return:
         """
 
-        if data := WeatherClient().get_weather(f"{city},{alpha2code}"):
-            return data
+        weather = Weather.objects.filter(Q(country__iregex=alpha2code) | Q(city__iregex=city))
 
-        return None
+        if not weather:
+            if data := WeatherClient().get_weather(f"{city},{alpha2code}"):
+                self.build_model(data)
+                weather = Weather.objects.filter(Q(country__iregex=alpha2code) | Q(city__iregex=city))
 
-    def build_model(self, country: CountryDTO) -> Country:
+        return weather
+
+    def build_model(self, weatherDTO: WeatherInfoDTO) -> Weather:
         """
-        Формирование объекта модели страны.
+        Создание модели Weather
 
-        :param CountryDTO country: Данные о стране.
+        :param weatherDTO: DTO-модель описания погоды.
         :return:
         """
 
-        return Country(
-            alpha3code=country.alpha3code,
-            name=country.name,
-            alpha2code=country.alpha2code,
-            capital=country.capital,
-            region=country.region,
-            subregion=country.subregion,
-            population=country.population,
-            latitude=country.latitude,
-            longitude=country.longitude,
-            demonym=country.demonym,
-            area=country.area,
-            numeric_code=country.numeric_code,
-            flag=country.flag,
-            currencies=[currency.code for currency in country.currencies],
-            languages=[language.name for language in country.languages],
+        return Weather.objects.create(
+            country=weatherDTO.country,
+            city=weatherDTO.city,
+            temp=weatherDTO.temp,
+            pressure=weatherDTO.pressure,
+            humidity=weatherDTO.humidity,
+            wind_speed=weatherDTO.wind_speed,
+            description=weatherDTO.description,
         )

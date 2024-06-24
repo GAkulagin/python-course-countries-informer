@@ -2,7 +2,7 @@
 from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MinLengthValidator
 from django.db import models
-
+from datetime import date
 from base.models import TimeStampMixin
 
 
@@ -96,3 +96,63 @@ class City(TimeStampMixin):
         verbose_name = "Город"
         verbose_name_plural = "Города"
         ordering = ["name"]
+
+
+class Weather(TimeStampMixin):
+    """Модель погоды"""
+
+    country = models.CharField(
+        max_length=2,
+        verbose_name="ISO Alpha2 country code",
+    )
+    city = models.CharField(
+        max_length=100,
+        verbose_name="Город",
+    )
+    temp = models.FloatField(
+        verbose_name="Температура, С",
+    )
+    pressure = models.IntegerField(
+        verbose_name="Давление, мм. рт. ст.",
+    )
+    humidity = models.IntegerField(
+        verbose_name="Влажность, %",
+    )
+    wind_speed = models.FloatField(
+        verbose_name="Скорость ветра, м\с",
+    )
+    description = models.CharField(
+        max_length=100,
+        verbose_name="Описание",
+    )
+
+    class Meta:
+        verbose_name = "Погода"
+        verbose_name_plural = "Погода"
+        ordering = ["country", "city"]
+
+
+class CurrencyRate(TimeStampMixin):
+    """Модель курса валюты"""
+
+    base = models.CharField(
+        max_length=3,
+        verbose_name="Валюта",
+    )
+
+    compared_to = models.CharField(
+        max_length=3,
+        verbose_name="Сравниваемая валюта",
+    )
+
+    value = models.FloatField(
+        verbose_name="курс",
+    )
+    date = models.DateTimeField(
+        verbose_name="Дата",
+        default=date.today(),
+    )
+
+    class Meta:
+        verbose_name = "Курс"
+        verbose_name_plural = "Курсы"

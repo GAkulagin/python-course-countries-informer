@@ -1,19 +1,20 @@
 """Представления Django"""
-import re
-from typing import Any
-
 from django.core.cache import caches
 from django.http import JsonResponse
 from rest_framework.decorators import api_view
-from rest_framework.exceptions import NotFound, ValidationError
+from rest_framework.exceptions import NotFound
 from rest_framework.request import Request
+from rest_framework.settings import api_settings
 
 from app.settings import CACHE_WEATHER
-from geo.serializers import CountrySerializer, CitySerializer
+from geo.serializers import CountrySerializer, CitySerializer, WeatherSerializer, CurrencySerializer
 from geo.services.city import CityService
 from geo.services.country import CountryService
-from geo.services.shemas import CountryCityDTO
+from geo.services.currency import CurrencyService
 from geo.services.weather import WeatherService
+
+default_pagination = api_settings.DEFAULT_PAGINATION_CLASS
+paginator = default_pagination()
 
 
 @api_view(["GET"])
@@ -40,33 +41,17 @@ def get_city(request: Request, name: str) -> JsonResponse:
 @api_view(["GET"])
 def get_cities(request: Request) -> JsonResponse:
     """
-    Получение информации о городах с фильтрацией по ISO Alpha2 коду страны и названию города.
+    Получение информации о всех городах в базе данных.
 
     :param Request request: Объект запроса
     :return:
     """
 
-    codes_set = set()
-    if codes := request.query_params.getlist("codes"):
-        if any(not re.match(r"\w{2},\w{2,50}", code) for code in codes):
-            raise ValidationError({"codes": "Коды переданы в некорректном формате."})
+    if cities := CityService().get_all_cities():
+        page = paginator.paginate_queryset(cities, request)
+        serializer = CitySerializer(page, many=True)
 
-        codes_set = {
-            CountryCityDTO(alpha2code=alpha2code, city=city)
-            for (alpha2code, city) in (code.split(",") for code in codes)
-        }
-
-    if not codes_set:
-        raise ValidationError(
-            {
-                "codes": "Не переданы ISO Alpha2 коды стран и названия городов для поиска."
-            }
-        )
-
-    if cities := CityService().get_cities_by_codes(codes_set):
-        serializer = CitySerializer(cities, many=True)
-
-        return JsonResponse(serializer.data, safe=False)
+        return paginator.get_paginated_response(serializer.data)
 
     return JsonResponse([], safe=False)
 
@@ -95,25 +80,17 @@ def get_country(request: Request, name: str) -> JsonResponse:
 @api_view(["GET"])
 def get_countries(request: Request) -> JsonResponse:
     """
-    Получение информации о странах с фильтрацией по их ISO Alpha2 коду страны.
+    Получение информации о всех странах в базе данных.
 
     :param Request request: Объект запроса
     :return:
     """
 
-    codes_set = set()
-    if codes := request.query_params.getlist("codes"):
-        codes_set = {code.strip() for code in codes if code.strip().isalpha()}
+    if countries := CountryService().get_all_countries():
+        page = paginator.paginate_queryset(countries, request)
+        serializer = CountrySerializer(page, many=True)
 
-    if not codes_set:
-        raise ValidationError(
-            {"codes": "Не переданы ISO Alpha2 коды стран для поиска."}
-        )
-
-    if countries := CountryService().get_countries_by_codes(codes_set):
-        serializer = CountrySerializer(countries, many=True)
-
-        return JsonResponse(serializer.data, safe=False)
+        return paginator.get_paginated_response(serializer.data)
 
     return JsonResponse([], safe=False)
 
@@ -136,11 +113,31 @@ def get_weather(request: Request, alpha2code: str, city: str) -> JsonResponse:
             caches[CACHE_WEATHER].set(cache_key, data)
 
     if data:
-        return JsonResponse(data)
+        serializer = WeatherSerializer(data, many=True)
 
-    raise NotFound
+        return JsonResponse(serializer.data, safe=False)
+
+    return JsonResponse([], safe=False)
 
 
 @api_view(["GET"])
-def get_currency(*args: Any, **kwargs: Any) -> None:
-    pass
+def get_currency(request: Request, code: str) -> JsonResponse:
+    """
+    Получение информации о курсах валют для указанной валюты.
+
+    :param Request request: Объект запроса
+    :param str code: трехзначный код валюты
+
+    :return:
+    """
+    data = caches[CACHE_WEATHER].get(code)
+    if not data:
+        if data := CurrencyService().get_currency_rates(code=code):
+            caches[CACHE_WEATHER].set(code, data)
+
+    if data:
+        serializer = CurrencySerializer(data, many=True)
+
+        return JsonResponse(serializer.data, safe=False)
+
+    return JsonResponse([], safe=False)
